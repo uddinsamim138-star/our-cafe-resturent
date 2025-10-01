@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Our Cafe Restaurant বিলিং সিস্টেম</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font for better Bengali display and modern look (Inter fallback) -->
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Tiro+Bangla:wght@400;700&family=Inter:wght@400;600;700&display=swap');
+        body {
+            font-family: 'Tiro Bangla', 'Inter', sans-serif;
+            background-color: #f7f9fb;
+        }
+        /* Custom styles for print functionality */
+        @media print {
+            /* Hide everything except the bill area */
+            .no-print {
+                display: none !important;
+            }
+            .bill-area {
+                width: 100%;
+                margin: 0;
+                box-shadow: none;
+                transform: scale(1); /* Ensure full size printing */
+                padding: 0;
+            }
+            body {
+                background: white;
+            }
+            /* Ensure the restaurant name and bill details are clearly visible */
+            .print-header {
+                display: block !important;
+                text-align: center;
+                margin-bottom: 1rem;
+            }
+        }
+    </style>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'primary-orange': '#FF6B35',
+                        'secondary-gray': '#E5E7EB',
+                        'dark-text': '#1F2937'
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="min-h-screen">
+
+    <!-- Global Message Box (Replaces alert()) -->
+    <div id="message-box" class="fixed top-4 left-1/2 -translate-x-1/2 z-50 p-3 rounded-lg shadow-xl text-white font-medium transition-opacity duration-300 opacity-0 pointer-events-none">
+        <!-- Message content will be set by JavaScript -->
+    </div>
+
+
+    <!-- Main Application Container -->
+    <div id="app" class="flex flex-col lg:flex-row min-h-screen">
+
+        <!-- 1. Product Selection Grid (Left/Main Section) -->
+        <div class="lg:flex-1 p-4 lg:p-8 no-print overflow-y-auto">
+            <!-- Restaurant Name and Logo Header for main view -->
+            <div class="mb-6 pb-2 border-b border-primary-orange">
+                 <div class="flex items-center space-x-4 mb-4">
+                    <!-- লোগো যুক্ত করা হলো (আপডেট করা নতুন লিঙ্ক) -->
+                    <img src="https://lh3.googleusercontent.com/pw/AP1GczPORbpzu5PY3j9uNKyMngPrU3B5mbWvbWEVVShw4eQxbB31h6AbgbJsgngoNdVxURSRMUty4LIBfvgX1qCcj0_aDYij2qL7QuDc4_NvP0SM6Kd224oE5VQDtoZAis1muZ0FdOulDLgks-HkifCR2tPdVg=w911-h911-s-no-gm" 
+                         alt="Our Cafe Restaurant Logo" 
+                         class="h-16 w-16 object-contain rounded-lg shadow-lg"
+                         onerror="this.onerror=null; this.src='https://placehold.co/64x64/FF6B35/white?text=LOGO';">
+                    <h2 class="text-4xl font-extrabold text-primary-orange">Our Cafe Restaurant</h2>
+                </div>
+            </div>
+            
+            <h1 class="text-3xl font-bold text-dark-text mb-6">মেনু: খাবার নির্বাচন করুন</h1>
+
+            <!-- Product Grid -->
+            <div id="product-grid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-6">
+                <!-- Product cards will be injected here by JavaScript -->
+            </div>
+        </div>
+
+        <!-- 2. Billing/Cart Area (Right Section) -->
+        <div class="lg:w-96 bg-white shadow-xl bill-area p-4 lg:p-6 flex flex-col justify-between">
+            <div class="flex-1 overflow-y-auto">
+                <!-- Restaurant Name Header for Print/Bill (Includes Logo) -->
+                <div class="print-header hidden">
+                    <div class="flex flex-col items-center justify-center">
+                        <!-- প্রিন্টের জন্য লোগো যুক্ত করা হলো (আপডেট করা নতুন লিঙ্ক) -->
+                        <img src="https://lh3.googleusercontent.com/pw/AP1GczPORbpzu5PY3j9uNKyMngPrU3B5mbWvbWEVVShw4eQxbB31h6AbgbJsgngoNdVxURSRMUty4LIBfvgX1qCcj0_aDYij2qL7QuDc4_NvP0SM6Kd224oE5VQDtoZAis1muZ0FdOulDLgks-HkifCR2tPdVg=w911-h911-s-no-gm" 
+                             alt="Our Cafe Restaurant Logo" 
+                             class="h-12 w-12 object-contain rounded-lg mb-2"
+                             onerror="this.onerror=null; this.src='https://placehold.co/50x50/FF6B35/white?text=LOGO';">
+                        <h2 class="text-xl font-bold text-dark-text">Our Cafe Restaurant</h2>
+                    </div>
+                    <p class="text-xs text-gray-500">পরিবেশনের তারিখ: <span id="bill-date"></span></p>
+                    <hr class="mt-2 mb-4 border-dashed">
+                </div>
+                
+                <div class="flex justify-between items-center mb-6 border-b pb-2 no-print">
+                    <h2 class="text-2xl font-semibold text-primary-orange">বর্তমান বিল</h2>
+                    <button onclick="clearBill()" class="text-sm text-gray-500 hover:text-red-600 font-medium">বিল খালি করুন</button>
+                </div>
+
+                <!-- Bill Items List Wrapper (Fixed Structure) -->
+                <!-- এই ডিভটি এখন মেসেজ এবং আইটেম লিস্ট দুটিকেই ধরে রাখে -->
+                <div class="space-y-4 min-h-[100px]">
+                    <p id="empty-bill-message" class="text-gray-500 text-center py-12">কোনো আইটেম যোগ করা হয়নি।</p>
+                    <!-- Bill Items List (Only for dynamic content) -->
+                    <div id="bill-items" class="space-y-4">
+                        <!-- Cart items will be injected here -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Total and Payment Section -->
+            <div class="pt-6 border-t mt-4">
+                <div id="bill-summary" class="space-y-2 text-dark-text text-lg">
+                    <div class="flex justify-between">
+                        <span class="text-gray-600">মোট আইটেম:</span>
+                        <span id="subtotal">₹ ০.০০</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-600">GST (৫%):</span>
+                        <span id="tax-amount">₹ ০.০০</span>
+                    </div>
+                    <div class="flex justify-between font-bold text-xl py-2 border-t border-dashed mt-2">
+                        <span>মোট প্রদেয়:</span>
+                        <span id="total-amount" class="text-primary-orange">₹ ০.০০</span>
+                    </div>
+                </div>
+                
+                <!-- Thank You Message for Print -->
+                <p class="text-center text-xs text-gray-700 mt-4 hidden print-header">আমাদের সেবা গ্রহণ করার জন্য ধন্যবাদ!</p>
+
+                <!-- Action Buttons -->
+                <div class="mt-6 space-y-3 no-print">
+                    <button onclick="printBill()" class="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-4 rounded-lg transition duration-200 shadow-md">
+                        বিল প্রিন্ট করুন
+                    </button>
+                    <button onclick="processOrder()" class="w-full bg-primary-orange hover:bg-orange-600 text-white font-bold py-3 px-4 rounded-lg transition duration-200 shadow-md">
+                        অর্ডার সম্পন্ন করুন (বাটন)
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript Logic -->
+    <script>
+        // 1. Menu Data
+        const menuItems = [
+            // Chowmein
+            { id: 'c1', name_bn: 'চাউমিন ১ প্লেট', price: 70, img: 'https://orders.popskitchen.in/storage/2024/09/image-83.png' },
+            { id: 'c2', name_bn: 'চাউমিন হাফ প্লেট', price: 40, img: 'https://s.lightorangebean.com/media/20240914164843/chow-mein-fun-done.png' }, 
+            // এগ + চিকেন চাউমিন
+            { id: 'ec', name_bn: 'এগ + চিকেন চাউমিন', price: 100, img: 'https://recipe30.com/wp-content/uploads/2021/09/Chicken-Chow-Mein-1.jpg' },
+            // Pakora
+            // পাকোড়া ১০০ গ্রাম
+            { id: 'p1', name_bn: 'পাকোড়া ১০০ গ্রাম', price: 50, img: 'https://atanurrannagharrecipe.com/wp-content/uploads/2022/12/Chicken-Pokoda-Photo-01.jpg' },
+            // Roll
+            // এগ রোল
+            { id: 'e1', name_bn: 'এগ রোল', price: 60, img: 'https://orders.popskitchen.in/storage/2024/09/image-299.png' },
+            // চিকেন + এগ রোল
+            { id: 'ce', name_bn: 'চিকেন + এগ রোল', price: 90, img: 'https://i.pinimg.com/736x/4f/61/04/4f6104c70ed2ff28eec6c27e4c9a64c0.jpg' },
+            // Momo
+            // মোমো ১ প্লেট
+            { id: 'm1', name_bn: 'মোমো ১ প্লেট', price: 60, img: 'https://i.pinimg.com/1200x/e8/35/ed/e835ed89023c2a6d2d1933321d59efc4.jpg' },
+        ];
+
+        let cart = []; // Stores { id, quantity }
+        const TAX_RATE = 0.05; // 5% GST (উদাহরণস্বরূপ)
+
+        // Helper function to format currency
+        const formatCurrency = (amount) => `₹ ${amount.toFixed(2)}`;
+        
+        // Custom Message Box Handler (Replaces alert)
+        function showMessage(text, type = 'success') {
+            const box = document.getElementById('message-box');
+            if (!box) return; // Safety check for message box
+            
+            box.textContent = text;
+            box.className = 'fixed top-4 left-1/2 -translate-x-1/2 z-50 p-3 rounded-lg shadow-xl text-white font-medium transition-opacity duration-300 opacity-100 pointer-events-auto';
+
+            if (type === 'success') {
+                box.classList.add('bg-green-500');
+            } else if (type === 'error') {
+                box.classList.add('bg-red-600');
+            } else {
+                 box.classList.add('bg-primary-orange');
+            }
+
+            // Hide after 3 seconds
+            setTimeout(() => {
+                box.classList.remove('opacity-100');
+                box.classList.add('opacity-0');
+                box.classList.remove('bg-green-500', 'bg-red-600', 'bg-primary-orange');
+            }, 3000);
+        }
+
+        // 2. Rendering the Product Grid
+        function renderProductGrid() {
+            const grid = document.getElementById('product-grid');
+            if (!grid) return; // Safety check
+            
+            grid.innerHTML = menuItems.map(item => `
+                <!-- Added data-item-id for Event Delegation -->
+                <div data-item-id="${item.id}"
+                    class="bg-white rounded-xl shadow-lg hover:shadow-xl transition duration-300 cursor-pointer overflow-hidden transform hover:scale-[1.02]">
+                    <img src="${item.img}" alt="${item.name_bn}" class="w-full h-32 object-cover" onerror="this.onerror=null; this.src='https://placehold.co/150x150/FF6B35/white?text=খাবার';">
+                    <!-- REMOVED 'pointer-events-none' from the div below to fix the click issue -->
+                    <div class="p-4"> 
+                        <h3 class="font-semibold text-lg text-dark-text">${item.name_bn}</h3>
+                        <p class="text-primary-orange font-bold text-xl mt-1">${formatCurrency(item.price)}</p>
+                        <!-- Added a visible button text for better UX, though the whole card is clickable -->
+                        <button class="mt-2 w-full text-sm bg-primary-orange/10 text-primary-orange py-1 rounded-full border border-primary-orange/30">যোগ করুন</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // 3. Cart Management Functions
+        function addItemToCart(itemId) {
+            try {
+                const existingItem = cart.find(item => item.id === itemId);
+                if (existingItem) {
+                    existingItem.quantity += 1;
+                } else {
+                    cart.push({ id: itemId, quantity: 1 });
+                }
+                const itemDetails = menuItems.find(menuItem => menuItem.id === itemId);
+                showMessage(`${itemDetails.name_bn} যোগ করা হয়েছে।`);
+                // Ensure bill rendering is called after cart modification
+                renderBill(); 
+            } catch (error) {
+                console.error('Error adding item to cart:', error);
+                showMessage('আইটেম যোগ করতে সমস্যা হয়েছে।', 'error');
+            }
+        }
+
+        function updateQuantity(itemId, change) {
+            const item = cart.find(i => i.id === itemId);
+            if (!item) return;
+
+            item.quantity += change;
+
+            if (item.quantity <= 0) {
+                // Remove item if quantity is zero or less
+                cart = cart.filter(i => i.id !== itemId);
+            }
+            renderBill();
+        }
+
+        // 4. Rendering the Bill
+        function renderBill() {
+            // billItemsContainer এখন শুধুমাত্র ডাইনামিক লিস্ট আইটেমগুলি ধারণ করে
+            const billItemsContainer = document.getElementById('bill-items'); 
+            // emptyMessage এখন একটি স্ট্যাটিক এলিমেন্ট যা ডাইনামিক লিস্টের বাইরে
+            const emptyMessage = document.getElementById('empty-bill-message'); 
+
+            // --- Safety checks for DOM elements ---
+            if (!billItemsContainer || !emptyMessage) {
+                console.error("Critical DOM elements for billing not found."); 
+                return;
+            }
+            
+            if (cart.length === 0) {
+                billItemsContainer.innerHTML = ''; // ডাইনামিক কন্টেন্ট খালি করা হলো
+                emptyMessage.style.display = 'block'; // খালি মেসেজটি দেখানো হলো
+                updateSummary(0); // Update summary with zero totals
+                return;
+            }
+            
+            emptyMessage.style.display = 'none'; // আইটেম থাকলে খালি মেসেজটি লুকানো হলো
+
+            let currentSubtotal = 0;
+
+            billItemsContainer.innerHTML = cart.map(cartItem => {
+                const itemDetails = menuItems.find(menuItem => menuItem.id === cartItem.id);
+                if (!itemDetails) return ''; // Should not happen
+                
+                const itemTotal = itemDetails.price * cartItem.quantity;
+                currentSubtotal += itemTotal;
+
+                return `
+                    <div class="flex items-center justify-between border-b pb-2">
+                        <div class="flex-1 pr-2">
+                            <p class="font-medium text-dark-text">${itemDetails.name_bn}</p>
+                            <p class="text-sm text-gray-500">${formatCurrency(itemDetails.price)} x ${cartItem.quantity}</p>
+                        </div>
+                        
+                        <!-- Quantity Control (Hidden during print) -->
+                        <div class="flex items-center space-x-1 no-print">
+                            <button onclick="updateQuantity('${cartItem.id}', -1)" 
+                                class="w-6 h-6 bg-secondary-gray rounded-full text-dark-text text-sm font-bold flex items-center justify-center hover:bg-gray-300 transition">-</button>
+                            <span class="w-6 text-center text-sm font-semibold">${cartItem.quantity}</span>
+                            <button onclick="updateQuantity('${cartItem.id}', 1)" 
+                                class="w-6 h-6 bg-secondary-gray rounded-full text-dark-text text-sm font-bold flex items-center justify-center hover:bg-gray-300 transition">+</button>
+                        </div>
+
+                        <!-- Item Total -->
+                        <div class="w-20 text-right">
+                            <p class="font-bold text-primary-orange">${formatCurrency(itemTotal)}</p>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+            
+            updateSummary(currentSubtotal);
+        }
+
+        // 5. Calculate and Update Summary
+        function updateSummary(subtotal) {
+            const subtotalEl = document.getElementById('subtotal');
+            const taxEl = document.getElementById('tax-amount');
+            const totalEl = document.getElementById('total-amount');
+
+            if (!subtotalEl || !taxEl || !totalEl) {
+                // Another critical safety check just in case
+                console.error("Critical summary elements not found.");
+                return;
+            }
+
+            // Calculations are done on floating point numbers, then formatted
+            const taxAmount = subtotal * TAX_RATE;
+            const totalAmount = subtotal + taxAmount;
+            
+            subtotalEl.innerText = formatCurrency(subtotal);
+            taxEl.innerText = formatCurrency(taxAmount);
+            totalEl.innerText = formatCurrency(totalAmount);
+        }
+        
+        // 6. Action Functions
+        
+        // Clears the entire cart
+        function clearBill() {
+            if (cart.length === 0) {
+                showMessage("বিল আগেই খালি আছে।");
+                return;
+            }
+            cart = [];
+            renderBill();
+            showMessage("বিল সফলভাবে খালি করা হলো।");
+        }
+
+        // Simulates order processing (for the 'Order Complete' button)
+        function processOrder() {
+            if (cart.length === 0) {
+                showMessage("বিল খালি আছে। কোনো অর্ডার সম্পন্ন করা যাবে না।", 'error');
+                return;
+            }
+            const finalTotal = document.getElementById('total-amount').innerText;
+            showMessage(`অর্ডার সম্পন্ন হলো! মোট প্রদেয়: ${finalTotal}`, 'success');
+            // You can add logic here to save the bill to a database
+            clearBill();
+        }
+
+        // Prints the bill (MANDATORY feature)
+        function printBill() {
+            if (cart.length === 0) {
+                 showMessage("প্রিন্ট করার জন্য কোনো আইটেম নেই।", 'error');
+                 return;
+            }
+            
+            // Set the current date for the print header
+            const dateElement = document.getElementById('bill-date');
+            if (dateElement) {
+                const now = new Date();
+                const options = { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' };
+                dateElement.textContent = now.toLocaleDateString('bn-BD', options);
+            }
+
+            // Add a temporary title for the printout. Changed from the previous Bengali title
+            const originalTitle = document.title;
+            document.title = "Bill Receipt"; 
+            
+            // This triggers the browser's native print dialog
+            window.print();
+            
+            // Revert title after print dialog closes/is cancelled
+            setTimeout(() => {
+                document.title = originalTitle;
+                // Clear the date after printing is done/cancelled
+                if (dateElement) dateElement.textContent = ''; 
+            }, 500);
+        }
+        
+        // 7. Initialization on Load
+        document.addEventListener('DOMContentLoaded', () => { 
+            renderProductGrid();
+            renderBill(); // Initial render to show empty message
+
+            // Event delegation: listen for clicks on the main grid container
+            const productGrid = document.getElementById('product-grid');
+            if (!productGrid) return; 
+
+            productGrid.addEventListener('click', (event) => {
+                // Find the nearest product card that has the data-item-id attribute
+                const productCard = event.target.closest('[data-item-id]');
+                
+                if (productCard) {
+                    const itemId = productCard.getAttribute('data-item-id');
+                    addItemToCart(itemId);
+                }
+            });
+        });
+        
+    </script>
+</body>
+</html>
